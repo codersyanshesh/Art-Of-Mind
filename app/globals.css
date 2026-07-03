@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cosmic-bg: #020617;
+  --color-cosmic-card: rgba(15, 23, 42, 0.65);
+  --color-cosmic-border: rgba(99, 102, 241, 0.15);
+  --color-electric-violet: #7c3aed;
+  --color-royal-blue: #2563eb;
+  --color-gold-accent: #fbbf24;
+  --color-glow-purple: #c084fc;
+  --color-cyan-accent: #06b6d4;
+
+  --breakpoint-sm: 320px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1440px;
+  --breakpoint-2xl: 1920px;
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 3s ease-in-out infinite;
+  --animate-orbit: orbit 20s linear infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-12px) rotate(1deg); }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.5; filter: drop-shadow(0 0 15px rgba(124, 58, 237, 0.4)); }
+    50% { opacity: 0.9; filter: drop-shadow(0 0 25px rgba(124, 58, 237, 0.8)); }
+  }
+  @keyframes orbit {
+    from { transform: rotate(0deg) translateX(100px) rotate(0deg); }
+    to { transform: rotate(360deg) translateX(100px) rotate(-360deg); }
+  }
+}
+
+:root {
+  --background: #020617;
+  --foreground: #f8fafc;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  overflow-x: hidden;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-panel-neon {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(124, 58, 237, 0.05);
+}
+
+.glass-input {
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+/* Glow Text & Borders */
+.text-glow-violet {
+  text-shadow: 0 0 10px rgba(124, 58, 237, 0.5), 0 0 20px rgba(124, 58, 237, 0.3);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.5), 0 0 20px rgba(6, 182, 212, 0.3);
+}
+
+.border-glow-violet:focus-within {
+  border-color: rgba(124, 58, 237, 0.6);
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e1b4b;
+  border-radius: 4px;
+  border: 2px solid #020617;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4c1d95;
+}
+
+/* Hide scrollbar for layout rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Cosmic gradients */
+.bg-cosmic-gradient {
+  background: radial-gradient(circle at 50% 50%, #0f0c29 0%, #302b63 50%, #24243e 100%);
+}
+
+.bg-space-mesh {
+  background-image: 
+    radial-gradient(at 10% 20%, rgba(124, 58, 237, 0.15) 0px, transparent 50%),
+    radial-gradient(at 90% 80%, rgba(37, 99, 235, 0.15) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.1) 0px, transparent 50%);
+}

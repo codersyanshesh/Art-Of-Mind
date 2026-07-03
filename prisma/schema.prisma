@@ -1,0 +1,225 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+enum Role {
+  READER
+  CREATOR
+  MODERATOR
+  ADMIN
+}
+
+enum StoryType {
+  NOVEL
+  REEL
+  AUDIO
+  COMIC
+  INTERACTIVE
+}
+
+model User {
+  id          String            @id @default(uuid())
+  supabaseId  String            @unique   // bridge to Supabase Auth user id
+  email       String            @unique
+  role        Role              @default(READER)
+  profile     Profile?
+  wallet      Wallet?
+  preferences Preferences?
+  comments    Comment[]
+  progress    ReadingProgress[]
+  notifications Notification[]
+  transactions Transaction[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model Profile {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String
+  avatarUrl   String?
+  bio         String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Wallet {
+  id           String    @id @default(uuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance      Float     @default(0.0)
+  payoutMethod String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Preferences {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fontSize       String    @default("Medium")
+  dyslexiaFont   Boolean   @default(false)
+  readingBg      String    @default("Dark")
+  colorblindMode Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Universe {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  stories     Story[]
+  characters  Character[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Story {
+  id          String            @id @default(uuid())
+  title       String
+  type        StoryType
+  coverImage  String
+  description String?
+  rating      Float             @default(5.0)
+  isPublished Boolean           @default(false)
+  publishedAt DateTime?
+  deletedAt   DateTime?         // Soft delete field
+  universeId  String
+  universe    Universe          @relation(fields: [universeId], references: [id], onDelete: Cascade)
+  chapters    Chapter[]
+  comments    Comment[]
+  mediaAssets     MediaAsset[]
+  characters      Character[]       @relation("StoryCharacters")
+  transactions    Transaction[]
+  readingProgress ReadingProgress[]
+  creatorId       String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([type])
+  @@index([universeId])
+  @@index([creatorId])
+  @@index([rating])
+  @@index([publishedAt])
+  @@index([isPublished])
+}
+
+model Chapter {
+  id        String    @id @default(uuid())
+  storyId   String
+  story     Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  title     String
+  content   String    @db.Text
+  index     Int
+  deletedAt DateTime? // Soft delete field
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([storyId])
+  @@index([index])
+}
+
+model MediaAsset {
+  id        String    @id @default(uuid())
+  storyId   String
+  story     Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  assetUrl  String
+  type      String
+  duration  Float?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([storyId])
+}
+
+model Character {
+  id          String    @id @default(uuid())
+  name        String
+  role        String
+  description String?
+  avatarUrl   String?
+  universeId  String
+  universe    Universe  @relation(fields: [universeId], references: [id], onDelete: Cascade)
+  stories     Story[]   @relation("StoryCharacters")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([universeId])
+}
+
+model Comment {
+  id              String    @id @default(uuid())
+  storyId         String
+  story           Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text            String
+  spoiler         Boolean   @default(false)
+  pinned          Boolean   @default(false)
+  parentCommentId String?
+  parentComment   Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         Comment[] @relation("CommentReplies")
+  likes           Int       @default(0)
+  hearts          Int       @default(0)
+  laughs          Int       @default(0)
+  deletedAt       DateTime? // Soft delete field
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([storyId])
+  @@index([userId])
+  @@index([parentCommentId])
+}
+
+model ReadingProgress {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storyId      String
+  story        Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  chapterIndex Int
+  percent      Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, storyId])
+  @@index([userId])
+  @@index([storyId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storyId   String?
+  story     Story?   @relation(fields: [storyId], references: [id], onDelete: SetNull)
+  amount    Float
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([storyId])
+}
