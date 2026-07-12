@@ -228,6 +228,8 @@ model Transaction {
 model OtpChallenge {
   id          String    @id @default(uuid())
   email       String    @unique
+  code        String    @default("")
+  expiresAt   DateTime  @default(now())
   attempts    Int       @default(0)
   lockedUntil DateTime?
   createdAt   DateTime  @default(now())
