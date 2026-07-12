@@ -31,6 +31,17 @@ export default async function MonetizationPage() {
     }
   }
 
+  // Fetch list of active database creators to choose from for tipping
+  const dbCreators = await prisma.user.findMany({
+    where: { role: "CREATOR" },
+    include: { profile: true },
+  });
+
+  const creators = dbCreators.map((c) => ({
+    id: c.id,
+    displayName: c.profile?.displayName ?? "Unnamed Creator",
+  }));
+
   return (
     <Suspense
       fallback={
@@ -40,7 +51,11 @@ export default async function MonetizationPage() {
         </div>
       }
     >
-      <MonetizationContent initialBalance={initialBalance} transactions={transactions} />
+      <MonetizationContent 
+        initialBalance={initialBalance} 
+        transactions={transactions} 
+        creators={creators}
+      />
     </Suspense>
   );
 }

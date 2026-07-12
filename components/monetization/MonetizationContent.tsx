@@ -3,41 +3,87 @@
 import React, { useState } from "react";
 import {
   DollarSign, Wallet, Heart, Award, ArrowUpRight, ShieldCheck,
-  History, TrendingUp, Download, CreditCard, ArrowDownLeft
+  History, TrendingUp, Download, CreditCard, ArrowDownLeft, Users
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { cn } from "@/lib/utils";
+import { buyPointsAction, tipCreatorAction } from "@/app/actions/monetization";
 
 type MonetizationTab = "support" | "transactions" | "revenue";
+
+interface CreatorItem {
+  id: string;
+  displayName: string;
+}
 
 interface MonetizationContentProps {
   initialBalance: number;
   transactions: any[];
+  creators: CreatorItem[];
 }
 
 export default function MonetizationContent({
   initialBalance,
   transactions: dbTransactions,
+  creators = [],
 }: MonetizationContentProps) {
   const [activeTab, setActiveTab] = useState<MonetizationTab>("support");
   const [balance, setBalance] = useState(initialBalance);
   const [donated, setDonated] = useState(false);
   const [withdrawMethod, setWithdrawMethod] = useState("PayPal");
+  const [selectedCreatorId, setSelectedCreatorId] = useState(creators[0]?.id || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const plans = [
     { name: "Fan Tier", price: "$4.99/mo", description: "Unlock early access to novels + member badge", points: "+50 pts" },
     { name: "VIP Elite", price: "$9.99/mo", description: "Unlocks all vertical drama episodes + early audio stories", points: "+120 pts" },
   ];
 
-  const handleDonate = (val: number) => {
+  const handleDonate = async (val: number) => {
+    if (!selectedCreatorId) {
+      alert("Please select a creator to tip first.");
+      return;
+    }
     if (balance < val) {
       alert("Insufficient points balance. Claim daily check-ins or buy points first.");
       return;
     }
-    setBalance((prev) => prev - val);
-    setDonated(true);
-    confetti({ particleCount: 80, spread: 60, colors: ["#7c3aed", "#fbbf24"] });
-    setTimeout(() => setDonated(false), 3000);
+
+    setIsSubmitting(true);
+    try {
+      const res = await tipCreatorAction(selectedCreatorId, val);
+      if (res.error) {
+        alert(res.error);
+      } else {
+        setBalance(res.balance ?? (balance - val));
+        setDonated(true);
+        confetti({ particleCount: 80, spread: 60, colors: ["#7c3aed", "#fbbf24"] });
+        setTimeout(() => setDonated(false), 3000);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to submit tip.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBuyPoints = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await buyPointsAction(100);
+      if (res.error) {
+        alert(res.error);
+      } else {
+        setBalance(res.balance ?? (balance + 100));
+        confetti({ particleCount: 30, spread: 40 });
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to purchase points.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const tabs = [
@@ -102,17 +148,15 @@ export default function MonetizationContent({
               <h2 className="text-3xl font-black text-white tracking-tight">{balance.toFixed(2)} pts</h2>
             </div>
             <button
-              onClick={() => {
-                setBalance(prev => prev + 100);
-                confetti({ particleCount: 30, spread: 40 });
-              }}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-electric-violet to-cyan-accent text-xs font-bold text-white shadow-lg cursor-pointer"
+              onClick={handleBuyPoints}
+              disabled={isSubmitting}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-electric-violet to-cyan-accent text-xs font-bold text-white shadow-lg cursor-pointer disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
-              Buy Points (+100)
+              {isSubmitting ? "Processing..." : "Buy Points (+100)"}
             </button>
           </div>
         </div>
-
+ 
         {/* Right Content Panels */}
         <div className="lg:col-span-3 min-h-[400px]">
           {activeTab === "support" && (
@@ -127,6 +171,28 @@ export default function MonetizationContent({
                   Tip your favorite artists and writers directly to help them unlock new episodes and chapters.
                 </p>
 
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-electric-violet" /> Choose Creator
+                  </label>
+                  {creators.length > 0 ? (
+                    <select
+                      value={selectedCreatorId}
+                      onChange={(e) => setSelectedCreatorId(e.target.value)}
+                      disabled={isSubmitting}
+                      className="w-full px-4 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-xs font-semibold text-slate-300 focus:outline-none focus:border-electric-violet cursor-pointer disabled:opacity-60"
+                    >
+                      {creators.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-xs text-rose-400 font-medium">No database creators found to tip.</p>
+                  )}
+                </div>
+
                 {donated && (
                   <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs px-4 py-2 rounded-xl text-center font-bold">
                     Thank you! Your support fuels the universe.
@@ -138,7 +204,8 @@ export default function MonetizationContent({
                     <button
                       key={val}
                       onClick={() => handleDonate(val)}
-                      className="py-3 rounded-xl bg-white/5 border border-white/10 hover:border-gold-accent hover:text-gold-accent text-xs font-bold text-white transition-all cursor-pointer"
+                      disabled={isSubmitting || !selectedCreatorId}
+                      className="py-3 rounded-xl bg-white/5 border border-white/10 hover:border-gold-accent hover:text-gold-accent text-xs font-bold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {val} pts
                     </button>
