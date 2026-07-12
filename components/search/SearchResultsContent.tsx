@@ -47,7 +47,13 @@ export default function SearchResultsContent({ stories }: SearchResultsContentPr
       if (typeFilter === "All Types") return true;
       return storyTypeLabel[c.type] === typeFilter;
     })
-    .filter(() => statusFilter === "Any Status" || true) // mock status
+    .filter((c) => {
+      if (statusFilter === "Any Status") return true;
+      if (statusFilter === "Completed") return c.deletedAt == null && c.isPublished === true && c.updatedAt < c.publishedAt;
+      if (statusFilter === "Ongoing") return c.isPublished === true && c.deletedAt == null;
+      if (statusFilter === "Hiatus") return c.isPublished === false && c.deletedAt == null;
+      return true;
+    })
     .filter((c) => {
       if (ratingFilter === "Any Rating") return true;
       const min = parseFloat(ratingFilter);
@@ -57,7 +63,7 @@ export default function SearchResultsContent({ stories }: SearchResultsContentPr
       if (sortBy === "Highest Rated") return b.rating - a.rating;
       if (sortBy === "Alphabetical") return a.title.localeCompare(b.title);
       if (sortBy === "Newest") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      return 0; // default
+      return b.rating - a.rating; // Most Popular = highest rated
     });
 
   const activeFilterCount = [

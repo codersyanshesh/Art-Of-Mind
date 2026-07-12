@@ -5,7 +5,7 @@ import SearchResultsContent from "@/components/search/SearchResultsContent";
 // Server Component — fetches all stories from database
 export default async function SearchPage() {
   const stories = await prisma.story.findMany({
-    where: { isPublished: true, deletedAt: null },
+    where: { deletedAt: null },
     include: { universe: true },
     orderBy: { rating: "desc" },
   });

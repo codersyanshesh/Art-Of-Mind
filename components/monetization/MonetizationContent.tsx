@@ -92,17 +92,15 @@ export default function MonetizationContent({
     { id: "revenue" as MonetizationTab, label: "Revenue Reports", icon: TrendingUp },
   ];
 
-  // Revenue mock mapping (based on transactions count)
-  const monthlyRevenue = [
-    { month: "Jan", amount: 120 },
-    { month: "Feb", amount: 180 },
-    { month: "Mar", amount: 145 },
-    { month: "Apr", amount: 210 },
-    { month: "May", amount: 290 },
-    { month: "Jun", amount: 380 },
-    { month: "Jul", amount: 160 },
-  ];
-  const maxRevenue = Math.max(...monthlyRevenue.map((r) => r.amount));
+  // Aggregate real transaction amounts by calendar month (positive = earnings)
+  const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const monthlyRevenue = MONTH_LABELS.map((month, idx) => ({
+    month,
+    amount: dbTransactions
+      .filter((t) => t.amount > 0 && new Date(t.createdAt).getMonth() === idx)
+      .reduce((sum: number, t: any) => sum + t.amount, 0),
+  }));
+  const maxRevenue = Math.max(...monthlyRevenue.map((r) => r.amount), 1);
 
   return (
     <div className="space-y-8 pb-16">

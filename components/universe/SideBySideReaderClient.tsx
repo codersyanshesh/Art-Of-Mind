@@ -32,7 +32,7 @@ interface AudioTrack {
   description: string;
 }
 
-const mockAudioTracks: AudioTrack[] = [
+const defaultAudioTracks: AudioTrack[] = [
   { id: "aud_ambient", name: "Binaural Dungeon Ambient", description: "3D wind and dripping chains" },
   { id: "aud_orchestral", name: "Citadel Courtly Intrigue", description: "Violins and dark harpsichord" },
   { id: "aud_action", name: "Dragon Awakening Drums", description: "Epic cinematic drums" }
@@ -98,7 +98,7 @@ export default function SideBySideReaderClient({
   // Sync States
   const [isSynced, setIsSynced] = useState(true);
   const [isPlayingAudio, setIsPlayingAudio] = useState(true);
-  const [selectedAudioTrack, setSelectedAudioTrack] = useState(mockAudioTracks[0]);
+  const [selectedAudioTrack, setSelectedAudioTrack] = useState(defaultAudioTracks[0]);
 
   // Reading progress tracking
   const [scrollPercent, setScrollPercent] = useState(initialPercent || 0);
@@ -665,12 +665,12 @@ export default function SideBySideReaderClient({
           <select
             value={selectedAudioTrack.id}
             onChange={(e) => {
-              const track = mockAudioTracks.find(t => t.id === e.target.value);
+              const track = defaultAudioTracks.find(t => t.id === e.target.value);
               if (track) setSelectedAudioTrack(track);
             }}
             className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-electric-violet cursor-pointer"
           >
-            {mockAudioTracks.map((track) => (
+            {defaultAudioTracks.map((track) => (
               <option key={track.id} value={track.id}>
                 {track.name}
               </option>
