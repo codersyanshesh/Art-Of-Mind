@@ -12,6 +12,7 @@ export default async function ProfilePage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
+  const decodedUsername = decodeURIComponent(username || "");
 
   // Match by normalised displayName (lower-cased, spaces removed)
   const profiles = await prisma.profile.findMany({
@@ -28,7 +29,7 @@ export default async function ProfilePage({
   const matched = profiles.find(
     (p) =>
       p.displayName.toLowerCase().replace(/\s+/g, "") ===
-      username?.toLowerCase()
+      decodedUsername.toLowerCase().replace(/\s+/g, "")
   );
 
   if (!matched) {
