@@ -100,7 +100,8 @@ export async function GET(request: Request) {
 
       if (otpError) {
         console.error("OTP send failed:", otpError);
-        return NextResponse.redirect(`${origin}/sign-in?error=otp_send_failed&details=${encodeURIComponent(otpError.message)}`);
+        const errDetails = JSON.stringify(otpError) !== "{}" ? JSON.stringify(otpError) : (otpError.message || "Unknown OTP error");
+        return NextResponse.redirect(`${origin}/sign-in?error=otp_send_failed&details=${encodeURIComponent(errDetails)}`);
       }
 
       // 5. Redirect to OTP verification page and set temporary cookies
