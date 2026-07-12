@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 import SignInForm from "@/components/auth/SignInForm";
 import ParticleField from "@/components/3d/ParticleField";
@@ -31,8 +31,16 @@ export default function SignInPage() {
 
       {/* Glassmorphic Form Wrapper */}
       <div className="relative z-10 w-full max-w-md">
-        <SignInForm />
+        <Suspense fallback={
+          <div className="w-full text-center text-slate-400 py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-electric-violet mx-auto mb-2" />
+            Loading authentication...
+          </div>
+        }>
+          <SignInForm />
+        </Suspense>
       </div>
     </main>
   );
 }
+

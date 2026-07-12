@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Settings,
@@ -20,6 +20,9 @@ import {
   updatePreferencesAction,
   deleteAccountAction,
 } from "@/app/actions/settings";
+import { uploadCoverImage } from "@/lib/supabase/storage";
+import { Upload, Image as ImageIcon, Camera } from "lucide-react";
+
 
 
 // Map DB enum values → UI display keys
@@ -57,6 +60,7 @@ interface Props {
   initialName: string;
   initialBio: string;
   initialAvatarUrl: string;
+  initialCoverUrl: string;
   initialFontSize: string;
   initialDyslexiaFont: boolean;
   initialReadingBg: string;
@@ -66,6 +70,8 @@ interface Props {
 export default function SettingsClient({
   initialName,
   initialBio,
+  initialAvatarUrl,
+  initialCoverUrl,
   initialFontSize,
   initialDyslexiaFont,
   initialReadingBg,
@@ -77,6 +83,65 @@ export default function SettingsClient({
   // Profile state — seeded from the database via RSC props
   const [name, setName] = useState(initialName || "");
   const [bio, setBio] = useState(initialBio || "");
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl || "");
+  const [coverUrl, setCoverUrl] = useState(initialCoverUrl || "");
+
+  // Upload states
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Profile picture must be under 5MB.");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const randomId = Math.random().toString(36).substring(2, 10);
+      const filePath = `avatars/avatar-${randomId}-${Date.now()}.${fileExt}`;
+
+      const publicUrl = await uploadCoverImage(filePath, file);
+      setAvatarUrl(publicUrl);
+    } catch (err: any) {
+      console.error(err);
+      alert(`Avatar upload failed: ${err.message}`);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Cover photo must be under 5MB.");
+      return;
+    }
+
+    setUploadingCover(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const randomId = Math.random().toString(36).substring(2, 10);
+      const filePath = `covers/cover-${randomId}-${Date.now()}.${fileExt}`;
+
+      const publicUrl = await uploadCoverImage(filePath, file);
+      setCoverUrl(publicUrl);
+    } catch (err: any) {
+      console.error(err);
+      alert(`Cover photo upload failed: ${err.message}`);
+    } finally {
+      setUploadingCover(false);
+    }
+  };
 
   // Security state
   const [mfaEnabled, setMfaEnabled] = useState(true);
@@ -146,6 +211,8 @@ export default function SettingsClient({
     const formData = new FormData();
     formData.set("displayName", name);
     formData.set("bio", bio);
+    formData.set("avatarUrl", avatarUrl);
+    formData.set("coverUrl", coverUrl);
 
     const result = await updateProfileAction(formData);
     setSaving(false);
@@ -255,6 +322,77 @@ export default function SettingsClient({
               </h2>
 
               <div className="space-y-4">
+                {/* Media Uploads (Cover and Avatar) */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Profile Visuals</label>
+                  
+                  {/* Cover Photo */}
+                  <div className="relative h-44 w-full rounded-2xl overflow-hidden border border-white/5 group bg-slate-950 bg-gradient-to-r from-slate-950 via-purple-950/20 to-slate-950 flex items-center justify-center">
+                    {coverUrl ? (
+                      <img src={coverUrl} alt="Profile Cover" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-slate-600 text-xs flex items-center gap-1.5">
+                        <ImageIcon className="w-4 h-4" /> No cover photo uploaded
+                      </div>
+                    )}
+                    {uploadingCover && (
+                      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center text-xs text-white gap-2 z-20 animate-pulse">
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-electric-violet" />
+                        Uploading cover photo...
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => coverInputRef.current?.click()}
+                      disabled={uploadingCover}
+                      className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-2 bg-slate-950/90 hover:bg-slate-900 border border-white/10 rounded-xl text-[10px] font-bold text-white transition-all cursor-pointer z-10 hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-electric-violet" />
+                      Upload Cover
+                    </button>
+                    <input
+                      type="file"
+                      ref={coverInputRef}
+                      onChange={handleCoverFileChange}
+                      accept="image/*"
+                      className="hidden"
+                    />
+
+                    {/* Overlapping Avatar */}
+                    <div className="absolute bottom-3 left-4 flex items-end z-10">
+                      <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-electric-violet bg-slate-950 shadow-2xl group/avatar">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center font-bold text-slate-400 text-xl bg-gradient-to-tr from-electric-violet to-cyan-accent text-white">
+                            {name ? name.charAt(0).toUpperCase() : "?"}
+                          </div>
+                        )}
+                        {uploadingAvatar && (
+                          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-20">
+                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-electric-violet" />
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => avatarInputRef.current?.click()}
+                          disabled={uploadingAvatar}
+                          className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-all duration-300 cursor-pointer text-white"
+                        >
+                          <Camera className="w-5 h-5 text-glow-violet" />
+                        </button>
+                        <input
+                          type="file"
+                          ref={avatarInputRef}
+                          onChange={handleAvatarFileChange}
+                          accept="image/*"
+                          className="hidden"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Display Username

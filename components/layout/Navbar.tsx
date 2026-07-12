@@ -77,7 +77,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
-  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; role: string; avatarUrl?: string } | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -387,8 +387,12 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                   }}
                   className="flex items-center gap-2 p-1 rounded-full hover:bg-white/5 transition-all duration-300 border border-transparent hover:border-white/10"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-electric-violet to-cyan-accent flex items-center justify-center font-semibold text-white shadow-lg text-sm">
-                    {user.name.charAt(0).toUpperCase()}
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-electric-violet to-cyan-accent flex items-center justify-center font-semibold text-white shadow-lg text-sm overflow-hidden">
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      user.name.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <span className="hidden md:inline text-sm font-medium text-slate-200">{user.name}</span>
                 </button>

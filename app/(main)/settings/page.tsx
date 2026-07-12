@@ -30,6 +30,7 @@ export default async function SettingsPage() {
       initialName={dbUser?.profile?.displayName ?? ""}
       initialBio={dbUser?.profile?.bio ?? ""}
       initialAvatarUrl={dbUser?.profile?.avatarUrl ?? ""}
+      initialCoverUrl={dbUser?.profile?.coverUrl ?? ""}
       initialFontSize={dbUser?.preferences?.fontSize ?? "Medium"}
       initialDyslexiaFont={dbUser?.preferences?.dyslexiaFont ?? false}
       initialReadingBg={dbUser?.preferences?.readingBg ?? "Dark"}

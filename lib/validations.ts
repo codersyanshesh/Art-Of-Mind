@@ -38,6 +38,7 @@ export const ProfileSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters.").max(50),
   bio: z.string().max(500, "Bio must be under 500 characters.").optional(),
   avatarUrl: z.string().url("Avatar must be a valid URL.").optional().or(z.literal("")),
+  coverUrl: z.string().url("Cover photo must be a valid URL.").optional().or(z.literal("")),
 });
 
 export const PreferencesSchema = z.object({

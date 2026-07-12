@@ -13,6 +13,7 @@ export async function updateProfileAction(formData: FormData) {
     displayName: formData.get("displayName"),
     bio: formData.get("bio") ?? undefined,
     avatarUrl: formData.get("avatarUrl") ?? undefined,
+    coverUrl: formData.get("coverUrl") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -33,12 +34,14 @@ export async function updateProfileAction(formData: FormData) {
         displayName: parsed.data.displayName,
         bio: parsed.data.bio ?? null,
         avatarUrl: parsed.data.avatarUrl || null,
+        coverUrl: parsed.data.coverUrl || null,
       },
       create: {
         userId: dbUser.id,
         displayName: parsed.data.displayName,
         bio: parsed.data.bio ?? null,
         avatarUrl: parsed.data.avatarUrl || null,
+        coverUrl: parsed.data.coverUrl || null,
       },
     });
 
