@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Settings,
   Shield,
@@ -312,130 +313,23 @@ export default function SettingsClient({
         <div className="lg:col-span-3">
           {/* Profile Tab */}
           {activeTab === "profile" && (
-            <form
-              onSubmit={handleSaveProfile}
-              className="p-6 rounded-2xl glass-panel border border-white/5 space-y-6"
-            >
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <User className="w-5 h-5 text-electric-violet" />
-                Profile Customization
-              </h2>
-
-              <div className="space-y-4">
-                {/* Media Uploads (Cover and Avatar) */}
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Profile Visuals</label>
-                  
-                  {/* Cover Photo */}
-                  <div className="relative h-44 w-full rounded-2xl overflow-hidden border border-white/5 group bg-slate-950 bg-gradient-to-r from-slate-950 via-purple-950/20 to-slate-950 flex items-center justify-center">
-                    {coverUrl ? (
-                      <img src={coverUrl} alt="Profile Cover" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-slate-600 text-xs flex items-center gap-1.5">
-                        <ImageIcon className="w-4 h-4" /> No cover photo uploaded
-                      </div>
-                    )}
-                    {uploadingCover && (
-                      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center text-xs text-white gap-2 z-20 animate-pulse">
-                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-electric-violet" />
-                        Uploading cover photo...
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => coverInputRef.current?.click()}
-                      disabled={uploadingCover}
-                      className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-2 bg-slate-950/90 hover:bg-slate-900 border border-white/10 rounded-xl text-[10px] font-bold text-white transition-all cursor-pointer z-10 hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                      <Camera className="w-3.5 h-3.5 text-electric-violet" />
-                      Upload Cover
-                    </button>
-                    <input
-                      type="file"
-                      ref={coverInputRef}
-                      onChange={handleCoverFileChange}
-                      accept="image/*"
-                      className="hidden"
-                    />
-
-                    {/* Overlapping Avatar */}
-                    <div className="absolute bottom-3 left-4 flex items-end z-10">
-                      <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-electric-violet bg-slate-950 shadow-2xl group/avatar">
-                        {avatarUrl ? (
-                          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center font-bold text-slate-400 text-xl bg-gradient-to-tr from-electric-violet to-cyan-accent text-white">
-                            {name ? name.charAt(0).toUpperCase() : "?"}
-                          </div>
-                        )}
-                        {uploadingAvatar && (
-                          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-20">
-                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-electric-violet" />
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => avatarInputRef.current?.click()}
-                          disabled={uploadingAvatar}
-                          className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-all duration-300 cursor-pointer text-white"
-                        >
-                          <Camera className="w-5 h-5 text-glow-violet" />
-                        </button>
-                        <input
-                          type="file"
-                          ref={avatarInputRef}
-                          onChange={handleAvatarFileChange}
-                          accept="image/*"
-                          className="hidden"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Display Username
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl glass-input border border-white/10"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Creator Bio
-                  </label>
-                  <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl glass-input border border-white/10 h-24 resize-none"
-                  />
-                </div>
+            <div className="p-6 md:p-8 rounded-2xl glass-panel border border-white/5 space-y-6 text-center py-16">
+              <div className="w-14 h-14 rounded-full bg-electric-violet/10 border border-electric-violet/20 flex items-center justify-center text-electric-violet mx-auto">
+                <User className="w-7 h-7" />
               </div>
-
-              <div className="flex items-center gap-4">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2.5 rounded-xl bg-electric-violet hover:bg-purple-700 text-xs font-bold text-white transition-colors cursor-pointer disabled:opacity-60"
-                >
-                  {saving ? "Saving..." : "Save Settings"}
-                </button>
-                {saveSuccess && (
-                  <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="w-4 h-4" /> Profile updated
-                  </span>
-                )}
-                {saveError && (
-                  <span className="text-xs font-semibold text-red-400">{saveError}</span>
-                )}
+              <div className="space-y-2 max-w-sm mx-auto">
+                <h3 className="text-base font-bold text-white">Public Profile Customization</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  To change your display name, biography, profile picture, or cover banner, please visit your public profile page directly.
+                </p>
               </div>
-            </form>
+              <Link
+                href={`/profile/${initialName.toLowerCase().replace(/\s+/g, "")}`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-electric-violet hover:bg-purple-700 text-xs font-bold text-white transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-electric-violet/20"
+              >
+                Go to My Profile
+              </Link>
+            </div>
           )}
 
           {/* Security Tab */}

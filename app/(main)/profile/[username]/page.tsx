@@ -2,6 +2,8 @@ import React from "react";
 import Link from "next/link";
 import { Star, BookOpen } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import ProfileHeaderClient from "@/components/profile/ProfileHeaderClient";
 
 // Server Component — look up creator profile from DB by username slug
 export default async function ProfilePage({
@@ -29,14 +31,29 @@ export default async function ProfilePage({
       username?.toLowerCase()
   );
 
-  const creatorName = matched?.displayName ?? "C.R. Nexus";
-  const creatorAvatar =
-    matched?.avatarUrl ??
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(creatorName)}&background=7c3aed&color=fff&size=128`;
-  const creatorCover = matched?.coverUrl ?? null;
-  const creatorBio =
-    matched?.bio ?? "Award-winning creator of the Crimson Throne universe.";
-  const isVerified = matched?.user.role === "CREATOR" || matched?.user.role === "ADMIN";
+  if (!matched) {
+    return (
+      <div className="py-20 text-center text-slate-500">
+        Profile not found.
+      </div>
+    );
+  }
+
+  // Get active authenticated user to check if this is their own profile page
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let isOwnProfile = false;
+  if (user) {
+    const dbUser = await prisma.user.findUnique({
+      where: { supabaseId: user.id },
+    });
+    if (dbUser && dbUser.id === matched.userId) {
+      isOwnProfile = true;
+    }
+  }
+
+  const isVerified = matched.user.role === "CREATOR" || matched.user.role === "ADMIN";
 
   // Fetch all published stories and resolve them to this creator's universe
   const stories = await prisma.story.findMany({
@@ -57,58 +74,19 @@ export default async function ProfilePage({
   return (
     <div className="space-y-8 pb-16">
       {/* Profile Header Card with Facebook-style Cover Photo */}
-      <div className="rounded-3xl overflow-hidden glass-panel border border-white/5 relative">
-        
-        {/* Cover Photo banner */}
-        <div className="relative h-48 md:h-64 w-full bg-slate-950 bg-gradient-to-r from-slate-950 via-purple-950/20 to-slate-950">
-          {creatorCover ? (
-            <img src={creatorCover} alt="Profile Cover" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-r from-slate-950 via-purple-950/10 to-slate-950 relative">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(124,58,237,0.1),transparent)] pointer-events-none" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 to-transparent pointer-events-none" />
-        </div>
-
-        {/* Profile Info and Avatar Row */}
-        <div className="px-6 pb-6 md:px-8 md:pb-8 flex flex-col md:flex-row items-center md:items-end gap-6 -mt-12 md:-mt-16 relative z-10 text-center md:text-left">
-          
-          {/* Avatar overlap */}
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-slate-950 bg-slate-950 shrink-0 relative shadow-2xl">
-            <img src={creatorAvatar} alt={creatorName} className="w-full h-full object-cover" />
-          </div>
-
-          {/* Details info */}
-          <div className="space-y-3 flex-1 pt-2 md:pt-16">
-            <div className="space-y-1">
-              <div className="flex flex-col md:flex-row md:items-center gap-2">
-                <h2 className="text-2xl font-black text-white">{creatorName}</h2>
-                {isVerified && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-electric-violet/20 border border-electric-violet/30 text-glow-purple text-[8px] font-bold text-electric-violet uppercase tracking-wider w-max mx-auto md:mx-0">
-                    Verified Creator
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-400 max-w-xl">{creatorBio}</p>
-            </div>
-
-            <div className="flex justify-center md:justify-start gap-6 text-xs text-slate-400">
-              <div>
-                <span className="font-bold text-white">{stories.length}K</span> Followers
-              </div>
-              <div>
-                <span className="font-bold text-white">{Math.ceil(stories.length / 2)}</span> Following
-              </div>
-            </div>
-          </div>
-
-          {/* Follow button */}
-          <button className="px-5 py-2.5 rounded-xl bg-electric-violet hover:bg-purple-700 text-xs font-bold text-white shadow-lg shadow-electric-violet/20 transition-all cursor-pointer mt-4 md:mt-12 hover:scale-[1.02] active:scale-[0.98]">
-            Follow Creator
-          </button>
-        </div>
-      </div>
+      <ProfileHeaderClient
+        profile={{
+          id: matched.id,
+          userId: matched.userId,
+          displayName: matched.displayName,
+          avatarUrl: matched.avatarUrl,
+          coverUrl: matched.coverUrl,
+          bio: matched.bio,
+        }}
+        isOwnProfile={isOwnProfile}
+        isVerified={isVerified}
+        storiesCount={stories.length}
+      />
 
       {/* Published Works Grid */}
       <div className="space-y-4">
