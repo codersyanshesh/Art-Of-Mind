@@ -17,8 +17,11 @@ export async function GET(request: Request) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (error) {
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+        const details = `${error.message} [Anon Key Length: ${anonKey.length}, prefix: ${anonKey.substring(0, 10)}... | Service Role Key Length: ${serviceKey.length}, prefix: ${serviceKey.substring(0, 10)}...]`;
         console.error("Exchange code error:", error);
-        return NextResponse.redirect(`${origin}/sign-in?error=oauth_callback_failed&details=${encodeURIComponent(error.message)}`);
+        return NextResponse.redirect(`${origin}/sign-in?error=oauth_callback_failed&details=${encodeURIComponent(details)}`);
       }
 
       if (!data?.user) {
