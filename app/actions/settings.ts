@@ -166,4 +166,45 @@ export async function deleteAccountAction() {
     return { error: err.message || "Failed to delete account." };
   }
 }
+/**
+ * Uploads a profile image (avatar or cover) to Supabase Storage using the
+ * authenticated server-side client, which carries the user's session cookie
+ * and satisfies RLS policies that reject anonymous client-side uploads.
+ */
+export async function uploadProfileImageAction(formData: FormData) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated." };
+
+    const file = formData.get("file") as File;
+    const bucket = (formData.get("bucket") as string) || "covers";
+    const path = formData.get("path") as string;
+
+    if (!file || !path) return { error: "Missing file or path." };
+
+    // Convert the File object to an ArrayBuffer then to a Buffer for server upload
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, buffer, {
+        contentType: file.type,
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Storage upload error:", error);
+      return { error: `Upload failed: ${error.message}` };
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(data.path);
+    return { success: true, publicUrl };
+  } catch (err: any) {
+    console.error("Upload Profile Image Error:", err);
+    return { error: err.message || "Failed to upload image." };
+  }
+}
 

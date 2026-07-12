@@ -2,9 +2,8 @@
 
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Edit3, Heart, X, Image as ImageIcon, CheckCircle2 } from "lucide-react";
-import { uploadCoverImage } from "@/lib/supabase/storage";
-import { updateProfileAction } from "@/app/actions/settings";
+import { Camera, Edit3, X, Image as ImageIcon } from "lucide-react";
+import { updateProfileAction, uploadProfileImageAction } from "@/app/actions/settings";
 
 interface CreatorProfile {
   id: string;
@@ -65,8 +64,13 @@ export default function ProfileHeaderClient({
       const randomId = Math.random().toString(36).substring(2, 10);
       const filePath = `avatars/avatar-${randomId}-${Date.now()}.${fileExt}`;
 
-      const publicUrl = await uploadCoverImage(filePath, file);
-      setAvatarUrl(publicUrl);
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("bucket", "covers");
+      fd.set("path", filePath);
+      const result = await uploadProfileImageAction(fd);
+      if (result.error) throw new Error(result.error);
+      setAvatarUrl(result.publicUrl!);
     } catch (err: any) {
       console.error(err);
       alert(`Avatar upload failed: ${err.message}`);
@@ -90,8 +94,13 @@ export default function ProfileHeaderClient({
       const randomId = Math.random().toString(36).substring(2, 10);
       const filePath = `covers/cover-${randomId}-${Date.now()}.${fileExt}`;
 
-      const publicUrl = await uploadCoverImage(filePath, file);
-      setCoverUrl(publicUrl);
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("bucket", "covers");
+      fd.set("path", filePath);
+      const result = await uploadProfileImageAction(fd);
+      if (result.error) throw new Error(result.error);
+      setCoverUrl(result.publicUrl!);
     } catch (err: any) {
       console.error(err);
       alert(`Cover photo upload failed: ${err.message}`);
