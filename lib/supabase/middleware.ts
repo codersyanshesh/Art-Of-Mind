@@ -34,6 +34,14 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
+  // Enforce OTP challenge redirect if OTP flow is active
+  const otpPending = request.cookies.get("otp_pending")?.value === "true";
+  if (otpPending && !path.startsWith("/auth/verify-otp") && !path.startsWith("/auth/callback")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/verify-otp";
+    return NextResponse.redirect(url);
+  }
+
   // 1. Redirect unauthenticated users away from app routes
   const isProtectedRoute =
     path.startsWith("/home") ||

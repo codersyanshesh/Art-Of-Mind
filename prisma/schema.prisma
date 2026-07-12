@@ -224,3 +224,12 @@ model Transaction {
   @@index([userId])
   @@index([storyId])
 }
+
+model OtpChallenge {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  attempts    Int       @default(0)
+  lockedUntil DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
