@@ -22,14 +22,15 @@ export default function SignInForm() {
   // Show oauth error message if redirected back with ?error=
   useEffect(() => {
     const oauthError = searchParams.get("error");
+    const details = searchParams.get("details");
     if (oauthError) {
       if (oauthError === "locked_out") {
         const hours = searchParams.get("hours") || "48";
         setError(`This Google account is locked due to too many failed OTP attempts. Please wait ${hours} hours to try again.`);
       } else if (oauthError === "otp_send_failed") {
-        setError("Failed to send verification code to your Gmail. Please try again.");
+        setError(`Failed to send verification code: ${details || "Please try again."}`);
       } else {
-        setError("Google sign-in failed. Please try again.");
+        setError(`Google sign-in failed: ${details || "Please try again."}`);
       }
     }
   }, [searchParams]);

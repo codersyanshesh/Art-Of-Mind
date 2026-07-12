@@ -12,9 +12,19 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
 
   if (code) {
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error && data?.user) {
+    try {
+      const supabase = await createClient();
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+      if (error) {
+        console.error("Exchange code error:", error);
+        return NextResponse.redirect(`${origin}/sign-in?error=oauth_callback_failed&details=${encodeURIComponent(error.message)}`);
+      }
+
+      if (!data?.user) {
+        return NextResponse.redirect(`${origin}/sign-in?error=oauth_callback_failed&details=No+user+session+returned`);
+      }
+
       const user = data.user;
       const email = user.email!;
       const displayName = user.user_metadata?.full_name || user.user_metadata?.displayName || email.split("@")[0];
@@ -87,7 +97,7 @@ export async function GET(request: Request) {
 
       if (otpError) {
         console.error("OTP send failed:", otpError);
-        return NextResponse.redirect(`${origin}/sign-in?error=otp_send_failed`);
+        return NextResponse.redirect(`${origin}/sign-in?error=otp_send_failed&details=${encodeURIComponent(otpError.message)}`);
       }
 
       // 5. Redirect to OTP verification page and set temporary cookies
@@ -95,10 +105,14 @@ export async function GET(request: Request) {
       response.cookies.set("otp_email", email, { maxAge: 900, httpOnly: true });
       response.cookies.set("otp_pending", "true", { maxAge: 900 });
       return response;
+
+    } catch (err: any) {
+      console.error("OAuth callback internal error:", err);
+      return NextResponse.redirect(`${origin}/sign-in?error=oauth_callback_failed&details=${encodeURIComponent(err.message || "Internal Server Error")}`);
     }
   }
 
   // OAuth failed — send back to sign-in with an error flag
-  return NextResponse.redirect(`${origin}/sign-in?error=oauth_callback_failed`);
+  return NextResponse.redirect(`${origin}/sign-in?error=oauth_callback_failed&details=No+authorization+code+provided`);
 }
 
