@@ -34,12 +34,39 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // Enforce OTP challenge redirect if OTP flow is active
+  // Enforce OTP challenge redirect if OTP flow is active —
+  // Only block access to protected app routes, NOT auth pages (sign-in, sign-up, forgot-password).
+  // This prevents users from being trapped on the OTP page if they navigate back to sign-in.
   const otpPending = request.cookies.get("otp_pending")?.value === "true";
-  if (otpPending && !path.startsWith("/auth/verify-otp") && !path.startsWith("/auth/callback")) {
+
+  const isProtectedAppRoute =
+    path.startsWith("/home") ||
+    path.startsWith("/discover") ||
+    path.startsWith("/trending") ||
+    path.startsWith("/categories") ||
+    path.startsWith("/search") ||
+    path.startsWith("/studio") ||
+    path.startsWith("/settings") ||
+    path.startsWith("/universe") ||
+    path.startsWith("/monetization") ||
+    path.startsWith("/achievements") ||
+    path.startsWith("/bookmarks") ||
+    path.startsWith("/history") ||
+    path.startsWith("/fan-clubs") ||
+    path.startsWith("/profile") ||
+    path.startsWith("/collections");
+
+  if (otpPending && isProtectedAppRoute) {
+    // Trying to access the app without completing OTP — send to verify
     const url = request.nextUrl.clone();
     url.pathname = "/auth/verify-otp";
     return NextResponse.redirect(url);
+  }
+
+  if (otpPending && (path.startsWith("/sign-in") || path.startsWith("/sign-up") || path.startsWith("/forgot-password"))) {
+    // User navigated back to sign-in — clear stale OTP cookies and let them through
+    supabaseResponse.cookies.delete("otp_email");
+    supabaseResponse.cookies.delete("otp_pending");
   }
 
   // 1. Redirect unauthenticated users away from app routes
