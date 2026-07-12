@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Settings,
   Shield,
@@ -17,7 +18,9 @@ import confetti from "canvas-confetti";
 import {
   updateProfileAction,
   updatePreferencesAction,
+  deleteAccountAction,
 } from "@/app/actions/settings";
+
 
 // Map DB enum values → UI display keys
 const dbFontToUi: Record<string, "S" | "M" | "L" | "XL"> = {
@@ -69,6 +72,7 @@ export default function SettingsClient({
   initialColorblindMode,
 }: Props) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const router = useRouter();
 
   // Profile state — seeded from the database via RSC props
   const [name, setName] = useState(initialName || "");
@@ -79,6 +83,28 @@ export default function SettingsClient({
   const [otpSent, setOtpSent] = useState(false);
   const [mfaSuccess, setMfaSuccess] = useState(false);
   const [otpVal, setOtpVal] = useState("");
+
+  // Deletion state
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const result = await deleteAccountAction();
+      if (result.error) {
+        alert(result.error);
+        setDeleting(false);
+      } else {
+        localStorage.removeItem("aom_user");
+        router.push("/");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An unexpected error occurred while deleting your account.");
+      setDeleting(false);
+    }
+  };
 
   // Accessibility state — seeded from the database via RSC props
   const [fontSize, setFontSize] = useState<"S" | "M" | "L" | "XL">(
@@ -352,6 +378,48 @@ export default function SettingsClient({
                   <div className="w-1.5 h-1.5 rounded-full bg-electric-violet" />
                   <span>OTP credentials can be received via email or a TOTP mobile application.</span>
                 </div>
+              </div>
+
+              {/* Danger Zone */}
+              <div className="border-t border-red-500/20 pt-6 space-y-4">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-red-500 flex items-center gap-2">
+                    Danger Zone
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Irreversibly delete your account and all associated profile, settings, reading history, and wallet details.
+                  </p>
+                </div>
+
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="px-4 py-2 text-xs font-bold bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Delete Account...
+                  </button>
+                ) : (
+                  <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/20 space-y-3">
+                    <p className="text-xs text-red-300 font-semibold">
+                      Are you absolutely sure? This action is permanent and cannot be undone.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        onClick={handleDeleteAccount}
+                        disabled={deleting}
+                        className="px-4 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
+                      >
+                        {deleting ? "Deleting..." : "Yes, Delete My Account"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        className="px-4 py-2 text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

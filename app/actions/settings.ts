@@ -129,3 +129,38 @@ export async function saveReadingProgressAction(formData: FormData) {
     return { error: err.message || "Failed to save reading progress." };
   }
 }
+
+/**
+ * Irreversibly deletes the current user's profile and database records,
+ * deletes their authentication credentials from Supabase, and signs them out.
+ */
+export async function deleteAccountAction() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated." };
+
+    const dbUser = await prisma.user.findUnique({
+      where: { supabaseId: user.id },
+    });
+
+    if (dbUser) {
+      // 1. Delete user from Prisma database (cascades to Profile, Wallet, Preferences, Comments, etc.)
+      await prisma.user.delete({
+        where: { id: dbUser.id },
+      });
+    }
+
+    // 2. Delete user from Supabase auth.users using raw SQL
+    await prisma.$executeRawUnsafe("DELETE FROM auth.users WHERE id = $1::uuid", user.id);
+
+    // 3. Clear session
+    await supabase.auth.signOut();
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("Delete Account Error:", err);
+    return { error: err.message || "Failed to delete account." };
+  }
+}
+

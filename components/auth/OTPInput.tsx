@@ -3,10 +3,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { CheckCircle2, RefreshCw, KeyRound } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 interface OTPInputProps {
   email: string;
-  onSuccess: (role: string) => void;
+  onSuccess: () => void;
   reason?: "signin" | "signup" | "forgot";
 }
 
@@ -15,6 +16,7 @@ export default function OTPInput({ email, onSuccess, reason = "signin" }: OTPInp
   const [activeInput, setActiveInput] = useState(0);
   const [timer, setTimer] = useState(59);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
@@ -24,7 +26,7 @@ export default function OTPInput({ email, onSuccess, reason = "signin" }: OTPInp
     // Focus first input initially
     inputRefs.current[0]?.focus();
 
-    // Countdown timer
+    // Countdown timer for resend button
     const interval = setInterval(() => {
       setTimer((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
@@ -45,7 +47,6 @@ export default function OTPInput({ email, onSuccess, reason = "signin" }: OTPInp
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-    // Backspace handling
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       setActiveInput(index - 1);
       inputRefs.current[index - 1]?.focus();
@@ -63,11 +64,23 @@ export default function OTPInput({ email, onSuccess, reason = "signin" }: OTPInp
     }
   };
 
-  const handleResend = () => {
-    setTimer(59);
+  const handleResend = async () => {
+    setIsResending(true);
     setError("");
-    // Simulate sending OTP
-    alert(`A new 6-digit OTP code has been sent to ${email}`);
+
+    const supabase = createClient();
+    const { error: resendError } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+
+    setIsResending(false);
+
+    if (resendError) {
+      setError(resendError.message);
+    } else {
+      setTimer(59);
+    }
   };
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -81,29 +94,33 @@ export default function OTPInput({ email, onSuccess, reason = "signin" }: OTPInp
     setIsVerifying(true);
     setError("");
 
-    // Simulate OTP verification API
-    setTimeout(() => {
-      // Demo validation: code is "123456" for success
-      if (code === "123456" || code === "111111") {
-        setSuccess(true);
-        confetti({
-          particleCount: 150,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: ["#7c3aed", "#06b6d4", "#fbbf24"],
-        });
+    // Verify the OTP against Supabase Auth
+    const supabase = createClient();
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: "email",
+    });
 
-        setTimeout(() => {
-          setIsVerifying(false);
-          // Retrieve stored role or default to Creator for test purposes
-          const role = localStorage.getItem("aom_temp_role") || "Creator";
-          onSuccess(role);
-        }, 1500);
-      } else {
-        setIsVerifying(false);
-        setError("Invalid OTP code. Please enter '123456' to proceed for demo.");
-      }
-    }, 1200);
+    if (verifyError) {
+      setIsVerifying(false);
+      setError(verifyError.message || "Invalid or expired code. Please try again.");
+      return;
+    }
+
+    // OTP verified — show success state then hand off
+    setSuccess(true);
+    confetti({
+      particleCount: 150,
+      spread: 80,
+      origin: { y: 0.6 },
+      colors: ["#7c3aed", "#06b6d4", "#fbbf24"],
+    });
+
+    setTimeout(() => {
+      setIsVerifying(false);
+      onSuccess();
+    }, 1500);
   };
 
   return (
@@ -125,17 +142,18 @@ export default function OTPInput({ email, onSuccess, reason = "signin" }: OTPInp
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-white tracking-wide">Enter MFA Code</h2>
             <p className="text-sm text-slate-400">
-              For security, we sent a 6-digit verification code to
+              We sent a 6-digit verification code to
               <span className="block font-medium text-slate-200">{email}</span>
             </p>
           </div>
 
-          {/* Input OTP Boxes */}
+          {/* OTP Input Boxes */}
           <div className="flex justify-center gap-2 sm:gap-3 py-2">
             {otp.map((digit, idx) => (
               <input
                 key={idx}
                 type="text"
+                inputMode="numeric"
                 pattern="\d*"
                 maxLength={1}
                 value={digit}
@@ -152,10 +170,6 @@ export default function OTPInput({ email, onSuccess, reason = "signin" }: OTPInp
           </div>
 
           {error && <p className="text-xs font-medium text-red-400">{error}</p>}
-          
-          <div className="text-xs text-slate-500 bg-white/5 py-1.5 rounded-lg border border-white/5">
-            Tip: Use <span className="font-semibold text-slate-300">123456</span> to pass MFA for demo.
-          </div>
 
           <button
             type="submit"
@@ -176,10 +190,11 @@ export default function OTPInput({ email, onSuccess, reason = "signin" }: OTPInp
               <button
                 type="button"
                 onClick={handleResend}
-                className="flex items-center gap-1 text-electric-violet hover:text-cyan-accent font-medium transition-colors"
+                disabled={isResending}
+                className="flex items-center gap-1 text-electric-violet hover:text-cyan-accent font-medium transition-colors disabled:opacity-50"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Resend Code
+                <RefreshCw className={`w-3.5 h-3.5 ${isResending ? "animate-spin" : ""}`} />
+                {isResending ? "Sending..." : "Resend Code"}
               </button>
             )}
           </div>

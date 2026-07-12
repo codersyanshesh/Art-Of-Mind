@@ -111,36 +111,73 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
 
   // Load user and notifications
   useEffect(() => {
-    const storedUser = localStorage.getItem("aom_user");
-    if (storedUser) {
-      const parsed = JSON.parse(storedUser);
-      setUser(parsed);
-      loadNotifications();
+    let subscription: any = null;
+    let supabaseInstance: any = null;
+    let channel: any = null;
+
+    const fetchAndSetUser = async () => {
+      try {
+        const { getCurrentUserProfileAction } = await import("@/app/actions/auth");
+        const result = await getCurrentUserProfileAction();
+        if (result?.user) {
+          setUser(result.user);
+          loadNotifications();
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error("Error fetching user profile:", err);
+        setUser(null);
+      }
+    };
+
+    import("@/lib/supabase/client").then(async ({ createClient }) => {
+      const supabase = createClient();
+      supabaseInstance = supabase;
+
+      // Check if session exists immediately
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await fetchAndSetUser();
+      } else {
+        setUser(null);
+      }
+
+      // Subscribe to Auth changes in real time
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          await fetchAndSetUser();
+        } else {
+          setUser(null);
+        }
+      });
+      subscription = data.subscription;
 
       // Realtime notifications subscriber
-      import("@/lib/supabase/client").then(({ createClient }) => {
-        const supabase = createClient();
-        const channel = supabase
-          .channel("user-notifications-realtime")
-          .on(
-            "postgres_changes",
-            { event: "*", schema: "public", table: "Notification" },
-            () => {
-              // Pull down fresh alerts from database
-              loadNotifications();
-            }
-          )
-          .subscribe();
-
-        return () => {
-          supabase.removeChannel(channel);
-        };
-      });
-    }
+      channel = supabase
+        .channel("user-notifications-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "Notification" },
+          () => {
+            loadNotifications();
+          }
+        )
+        .subscribe();
+    });
 
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+      if (supabaseInstance && channel) {
+        supabaseInstance.removeChannel(channel);
+      }
+    };
   }, []);
 
   // Close notification panel on outside click
@@ -185,7 +222,6 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
     } catch (err) {
       console.error("Error signing out:", err);
     }
-    localStorage.removeItem("aom_user");
     setUser(null);
     setShowUserMenu(false);
     router.push("/");

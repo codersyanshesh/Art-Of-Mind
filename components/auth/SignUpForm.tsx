@@ -4,10 +4,11 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, User, Sparkles, BookOpen, ArrowRight } from "lucide-react";
-import OTPInput from "./OTPInput";
+
 import { cn } from "@/lib/utils";
 
-import { signUpAction } from "@/app/actions/auth";
+import confetti from "canvas-confetti";
+import { signUpAction, signInAction } from "@/app/actions/auth";
 
 export default function SignUpForm() {
   const router = useRouter();
@@ -16,7 +17,6 @@ export default function SignUpForm() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"Member" | "Creator">("Member");
   const [agreeTerms, setAgreeTerms] = useState(false);
-  const [showOTP, setShowOTP] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,18 +43,37 @@ export default function SignUpForm() {
 
       const result = await signUpAction(formData);
 
-      setIsLoading(false);
       if (result.error) {
+        setIsLoading(false);
         setError(result.error);
-      } else if (result.success) {
-        // Cache user info details temporarily until OTP verified
-        const tempUser = {
-          name: username,
-          email: email,
-          role: role === "Creator" ? "CREATOR" : "READER",
-        };
-        localStorage.setItem("aom_temp_user", JSON.stringify(tempUser));
-        setShowOTP(true);
+        return;
+      }
+
+      if (result.success) {
+        // Automatically sign in the user to establish Supabase session cookies
+        const signInFormData = new FormData();
+        signInFormData.append("email", email);
+        signInFormData.append("password", password);
+        
+        const loginResult = await signInAction(signInFormData);
+        setIsLoading(false);
+
+        if (loginResult.error) {
+          setError(`Account created, but sign-in failed: ${loginResult.error}. Please try signing in manually.`);
+          setTimeout(() => router.push("/sign-in"), 3000);
+          return;
+        }
+
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ["#7c3aed", "#06b6d4", "#fbbf24"],
+        });
+        
+        setTimeout(() => {
+          router.push("/home");
+        }, 800);
       }
     } catch (err: any) {
       setIsLoading(false);
@@ -62,31 +81,6 @@ export default function SignUpForm() {
     }
   };
 
-  const handleOTPSuccess = (finalRole: string) => {
-    const tempUser = localStorage.getItem("aom_temp_user");
-    if (tempUser) {
-      localStorage.setItem("aom_user", tempUser);
-      localStorage.removeItem("aom_temp_user");
-    } else {
-      const newUser = {
-        name: username,
-        email: email,
-        role: finalRole === "Creator" ? "CREATOR" : "READER",
-      };
-      localStorage.setItem("aom_user", JSON.stringify(newUser));
-    }
-    router.push("/home");
-  };
-
-  if (showOTP) {
-    return (
-      <OTPInput
-        email={email}
-        onSuccess={handleOTPSuccess}
-        reason="signup"
-      />
-    );
-  }
 
   return (
     <div className="w-full max-w-md mx-auto p-8 rounded-2xl glass-panel border border-white/5 shadow-2xl space-y-6">

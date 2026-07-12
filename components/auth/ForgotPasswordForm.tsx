@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Mail, Lock, CheckCircle2, ArrowRight, ShieldCheck } from "lucide-react";
 import OTPInput from "./OTPInput";
+import { sendOtpAction } from "@/app/actions/auth";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -13,7 +15,7 @@ export default function ForgotPasswordForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleRequestOTP = (e: React.FormEvent) => {
+  const handleRequestOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       setError("Please enter your email address.");
@@ -23,11 +25,16 @@ export default function ForgotPasswordForm() {
     setIsLoading(true);
     setError("");
 
-    // Simulate OTP generation
-    setTimeout(() => {
-      setIsLoading(false);
-      setStep(2);
-    }, 1000);
+    // Send a real OTP to the email via Supabase
+    const result = await sendOtpAction(email);
+    setIsLoading(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    setStep(2);
   };
 
   const handleOTPSuccess = () => {
@@ -35,7 +42,7 @@ export default function ForgotPasswordForm() {
     setStep(3);
   };
 
-  const handleResetPassword = (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password || !confirmPassword) {
       setError("Please fill in all fields.");
@@ -49,11 +56,17 @@ export default function ForgotPasswordForm() {
     setIsLoading(true);
     setError("");
 
-    // Simulate password update
-    setTimeout(() => {
-      setIsLoading(false);
-      setStep(4);
-    }, 1200);
+    // Update the password in Supabase Auth (user is now authenticated via OTP)
+    const supabase = createClient();
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setIsLoading(false);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    setStep(4);
   };
 
   return (

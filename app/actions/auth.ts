@@ -30,6 +30,15 @@ export async function signUpAction(formData: FormData) {
   const role = parsed.data.role === "CREATOR" ? Role.CREATOR : Role.READER;
 
   try {
+    // 0. Check if user already exists in Prisma to avoid database unique constraint crash
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (existingUser) {
+      return { error: "An account with this email address already exists." };
+    }
+
     const supabase = await createClient();
 
     // 1. Register with Supabase Auth (passing role metadata for middleware checks)
@@ -86,6 +95,40 @@ export async function signUpAction(formData: FormData) {
 }
 
 /**
+ * Retrieves the currently logged-in user profile from Prisma.
+ */
+export async function getCurrentUserProfileAction() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { user: null };
+
+    const dbUser = await prisma.user.findUnique({
+      where: { supabaseId: user.id },
+      include: {
+        profile: true,
+      },
+    });
+
+    if (!dbUser) return { user: null };
+
+    return {
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.profile?.displayName || "Reader",
+        role: dbUser.role,
+        avatarUrl: dbUser.profile?.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(dbUser.email)}`,
+      },
+    };
+  } catch (error: any) {
+    console.error("getCurrentUserProfileAction Error:", error);
+    return { user: null };
+  }
+}
+
+
+/**
  * Signs in a user using credentials via Supabase Auth.
  */
 export async function signInAction(formData: FormData) {
@@ -131,6 +174,28 @@ export async function signInAction(formData: FormData) {
   } catch (error: any) {
     console.error("Signin Action Error:", error);
     return { error: error.message || "An unexpected error occurred during signin." };
+  }
+}
+
+/**
+ * Sends a real 6-digit OTP to the given email via Supabase Auth.
+ * Called after successful password verification as a second authentication factor.
+ */
+export async function sendOtpAction(email: string) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        // Only send OTP to existing users — never create a new account from here
+        shouldCreateUser: false,
+      },
+    });
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (error: any) {
+    console.error("Send OTP Action Error:", error);
+    return { error: error.message || "Failed to send OTP code." };
   }
 }
 
