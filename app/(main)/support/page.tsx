@@ -1,14 +1,27 @@
 "use client";
 
-import React, { useState } from "react";
-import { HelpCircle, Mail, MessageSquare, Plus, Minus, Send, CheckCircle2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { HelpCircle, Mail, MessageSquare, Plus, Minus, Send, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SupportPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email) {
+        setEmail(session.user.email);
+      }
+    });
+  }, []);
 
   const faqs = [
     {
@@ -29,13 +42,62 @@ export default function SupportPage() {
     }
   ];
 
-  const handleSubmitTicket = (e: React.FormEvent) => {
+  const handleSubmitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subject || !message) return;
-    setSent(true);
-    setSubject("");
-    setMessage("");
-    setTimeout(() => setSent(false), 4000);
+    if (!email || !subject || !message) return;
+
+    setIsSubmitting(true);
+    setError(null);
+    setSent(false);
+
+    const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "service_yv3w7dh";
+    const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "template_flszpye";
+    const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
+
+    if (!publicKey || publicKey === "YOUR_EMAILJS_PUBLIC_KEY") {
+      setIsSubmitting(false);
+      setError("Email service is not configured yet (Public Key is missing). Please set NEXT_PUBLIC_EMAILJS_PUBLIC_KEY in your environment.");
+      return;
+    }
+
+    try {
+      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          service_id: serviceId,
+          template_id: templateId,
+          user_id: publicKey,
+          template_params: {
+            from_email: email,
+            user_email: email,
+            email: email,
+            reply_to: email,
+            subject: subject,
+            message: message,
+            ticket_subject: subject,
+            ticket_message: message,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP ${response.status}`);
+      }
+
+      setSent(true);
+      setSubject("");
+      setMessage("");
+      setTimeout(() => setSent(false), 5000);
+    } catch (err: any) {
+      console.error("Support ticket EmailJS submission error:", err);
+      setError(err.message || "Failed to send support ticket. Please try again later.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -90,11 +152,30 @@ export default function SupportPage() {
 
           {sent && (
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-1.5 animate-pulse-glow">
-              <CheckCircle2 className="w-4 h-4" /> Support ticket sent. We will respond within 24 hours.
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Support ticket sent. We will respond within 24 hours.
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmitTicket} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-400">Email Address</label>
+              <input
+                type="email"
+                required
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 text-xs rounded-xl glass-input border border-white/10"
+              />
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-400">Subject</label>
               <input
@@ -120,10 +201,23 @@ export default function SupportPage() {
 
             <button
               type="submit"
-              className="w-full py-2.5 rounded-xl bg-electric-violet hover:bg-purple-700 text-xs font-bold text-white flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              disabled={isSubmitting}
+              className={cn(
+                "w-full py-2.5 rounded-xl bg-electric-violet hover:bg-purple-700 text-xs font-bold text-white flex items-center justify-center gap-2 transition-colors cursor-pointer",
+                isSubmitting && "opacity-50 cursor-not-allowed"
+              )}
             >
-              <Send className="w-3.5 h-3.5" />
-              Send Support Ticket
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-3.5 h-3.5" />
+                  Send Support Ticket
+                </>
+              )}
             </button>
           </form>
         </div>

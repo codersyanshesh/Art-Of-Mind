@@ -4,7 +4,7 @@ import nodemailer from "nodemailer";
  * Sends a 6-digit OTP code to the specified email address using Gmail SMTP.
  * Requires GMAIL_USER and GMAIL_APP_PASSWORD environment variables.
  */
-export async function sendOtpEmail(to: string, code: string): Promise<void> {
+async function sendOtpEmailWithNodemailer(to: string, code: string): Promise<void> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
 
@@ -32,6 +32,53 @@ export async function sendOtpEmail(to: string, code: string): Promise<void> {
       </div>
     `,
   });
+}
+
+/**
+ * Sends a 6-digit OTP code to the specified email address using EmailJS REST API,
+ * falling back to Gmail SMTP if EmailJS is not fully configured.
+ */
+export async function sendOtpEmail(to: string, code: string): Promise<void> {
+  const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "service_yv3w7dh";
+  const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "template_flszpye";
+  const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
+  const privateKey = process.env.EMAILJS_PRIVATE_KEY;
+
+  const isEmailJsConfigured = publicKey && publicKey !== "YOUR_EMAILJS_PUBLIC_KEY";
+
+  if (!isEmailJsConfigured) {
+    console.warn("EmailJS Public Key is not configured. Falling back to Nodemailer.");
+    return sendOtpEmailWithNodemailer(to, code);
+  }
+
+  const payload = {
+    service_id: serviceId,
+    template_id: templateId,
+    user_id: publicKey,
+    accessToken: privateKey || undefined,
+    template_params: {
+      to_email: to,
+      email: to,
+      to_name: to.split("@")[0],
+      code: code,
+      otp: code,
+      otp_code: code,
+    },
+  };
+
+  const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("EmailJS API Error response:", errorText);
+    throw new Error(`EmailJS send failed with status ${response.status}: ${errorText}`);
+  }
 }
 
 /**
