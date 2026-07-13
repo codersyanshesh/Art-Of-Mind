@@ -22,12 +22,24 @@ export async function sendOtpEmail(to: string, code: string): Promise<void> {
     user_id: publicKey,
     accessToken: privateKey || undefined,
     template_params: {
+      // Recipient
       to_email: to,
       email: to,
       to_name: to.split("@")[0],
-      code: code,
+      // OTP code — covers all common EmailJS template variable names
+      passcode: code,
       otp: code,
+      code: code,
       otp_code: code,
+      pin: code,
+      // Company branding
+      company_name: "Art of Mind",
+      app_name: "Art of Mind",
+      from_name: "Art of Mind",
+      // Expiry — covers both timestamp and relative formats
+      expiry_time: new Date(Date.now() + 15 * 60 * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      expiry: "15 minutes",
+      validity: "15 minutes",
     },
   };
 
